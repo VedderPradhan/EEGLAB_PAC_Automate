@@ -35,14 +35,14 @@ for edfFile in edfFiles:
             lastRow = RowRec[count]
             
         if lastRow == 1:
-            ws1.cell(row=lastRow , column=lastColumn, value="A")
+            ws1.cell(row=lastRow , column=lastColumn, value=edfFile)
             RowRec[count] = lastRow
         else:
             if firstIteration == True:
-                ws1.cell(row=lastRow + 3, column=lastColumn, value="B")
+                ws1.cell(row=lastRow + 3, column=lastColumn, value=edfFile)
                 RowRec[count] = lastRow + 3
             else:
-                ws1.cell(row=lastRow, column=lastColumn, value="B")
+                ws1.cell(row=lastRow, column=lastColumn, value=edfFile)
                 RowRec[count] = lastRow
 
         if firstIteration == True:            
