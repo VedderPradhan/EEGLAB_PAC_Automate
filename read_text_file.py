@@ -4,12 +4,18 @@ import time
 import pyautogui as pg
 import openpyxl
 from datetime import datetime
+import shutil
 import logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-phaseFreqs = ['0.5 1', '0.5 1', '3 4' , '3 4']
-ampRange = ['80 200', '200 300']
-edfFiles = ['No 1 for MI.edf', 'No 2 for MI.edf', 'No 3 for MI.edf']
+params = [['0.5 1','80 200'], ['0.5 1','200 300'],
+          ['3 4','80 200'] , ['3 4','200 300']]
+#ampRange = ['80 200', '200 300']
+edfFiles = ['No 1 for MI.edf', 'No 2 for MI.edf', 'No 3 for MI.edf',
+            'No 4 for MI.edf', 'No 5 for MI.edf', 'No 6 for MI.edf',
+            'No 7 for MI.edf', 'No 8 for MI.edf', 'No 9 for MI.edf',
+            'No 10 for MI.edf']
+workPath = input("Enter path to work on PAC computation: ")
 
 #Create an Excel file to save the results
 now = datetime.now()
@@ -22,10 +28,11 @@ wb_new.save(fileName)
 lastColumn = 1 #To start with the first column
 firstIteration = True #The computed PAC for the first edf File (all parameters)
 count = 0 #Guide counter for Row Record indexing 
-RowRec = [0] * len(phaseFreqs) #Tracking the Row Entries
+#RowRec = [0] * len(phaseFreqs) #Tracking the Row Entries
 rowIndex = 0 #For storing RowRec[count] in the Iterations excluding the first iteration 
-ampRangeIndex = 0
+#ampRangeIndex = 0
 IsFirstEdfFile = True
+rowToEnterData = 1
 
 #Windows and Dialogs definition
 app = application.Application().connect(path = r"C:\Program Files\MATLAB\R2019b\bin\win64\MATLAB.exe")
@@ -33,11 +40,21 @@ dlg = app.window(title_re = ".*MATLAB*")
 dlg2 = app.window(title_re = ".*pac_pop_main.*")
 dlg3 = app.window(title_re = ".*pac_pop_statsSetUp.*")
 
+#copy .m file to the target path
+shutil.copy("ScriptTest.m", workPath)
+with open(workPath + r"\ScriptTest.m" , 'r') as file:
+    filedata2 = file.read()
+
+filedata2 = filedata2.replace("path", workPath)
+
+with open(workPath + r"\ScriptTest.m", 'w') as file:
+    file.write(filedata2)
+
 #Main Part
 for edfFile in edfFiles:
     #Change the edf file name in the .m file
     logging.debug('Entered the edfFile loop' + edfFile)
-    with open(r"C:\Users\Samantha\Desktop\Sammy - Ope ECoG\Motohashi Yuunosuke 24.8.2020 R temporal ganglioglioma or DNET\Post\ScriptTest.m", 'r') as file:
+    with open(workPath + "\ScriptTest.m", 'r') as file:
         filedata = file.read()
 
     if IsFirstEdfFile == True:
@@ -46,10 +63,10 @@ for edfFile in edfFiles:
         filedata = filedata.replace(edfFiles[edfFiles.index(edfFile)-1], edfFile)
         print("File changed")
 
-    with open(r"C:\Users\Samantha\Desktop\Sammy - Ope ECoG\Motohashi Yuunosuke 24.8.2020 R temporal ganglioglioma or DNET\Post\ScriptTest.m", 'w') as file:
+    with open(workPath + "\ScriptTest.m", 'w') as file:
         file.write(filedata)
-        
-    for phaseFreq in phaseFreqs:        
+    
+    for param in params:        
         #Activate Matlab window and run ScriptTest.m
         dlg.set_focus()
         time.sleep(0.3)
@@ -69,14 +86,9 @@ for edfFile in edfFiles:
 
         #Enter the Parameters in the pac_pop_man window and press OK button
         pg.press('tab')
-        pg.write(phaseFreq)
-        pg.press('tab')
-        
-        if ampRangeIndex > 1:
-            ampRangeIndex = 0        
-        pg.write(ampRange[ampRangeIndex])
-        ampRangeIndex = ampRangeIndex + 1
-
+        pg.write(param[0])
+        pg.press('tab')       
+        pg.write(param[1])
         pg.press('tab')
         pg.write('5')
         pg.press( 'tab', presses=4, interval=0.3)
@@ -86,7 +98,7 @@ for edfFile in edfFiles:
         pg.press('tab')
         pg.write('18')
         pg.press( 'tab', presses=2, interval=0.3)
-        time.sleep
+        time.sleep(0.3)
         pg.press('space')
         print('Parameter Entered')            
 
@@ -97,52 +109,43 @@ for edfFile in edfFiles:
         waitVar = dlg3.wait("exists enabled visible ready active", timeout=30, retry_interval=20)
         pg.press( 'tab', presses=7, interval=0.3)
         pg.press('space')
+        time.sleep(2)
         
-        #open the txt file containing EEG.pac.mi value
+        #open the txt file containing EEG.pac.mi value and read
+        textContent = 0
+        logging.debug("textContent Value (after setting to 0): " + str(textContent))
         f = open(r"C:\Users\Samantha\Desktop\Sammy - Ope ECoG\Motohashi Yuunosuke 24.8.2020 R temporal ganglioglioma or DNET\Post\saveTest.txt")
         textContent = f.readlines()
+        logging.debug("saveTest.txt read")
         print(textContent)
+        f.close()
+        
 
         #Write data to Excel
         wb = openpyxl.load_workbook(fileName) #xlsx should exist
         ##wb = openpyxl.Workbook()
         ws1 = wb.active
-        if firstIteration == True:
-            lastRow = ws1.max_row
-        else:
-            lastRow = RowRec[count]
-            
-        if lastRow == 1:
-            ws1.cell(row=lastRow , column=lastColumn, value=edfFile)
-            RowRec[count] = lastRow
-        else:
-            if firstIteration == True:
-                ws1.cell(row=lastRow + 3, column=lastColumn, value=edfFile)
-                RowRec[count] = lastRow + 3
-            else:
-                ws1.cell(row=lastRow, column=lastColumn, value=edfFile)
-                RowRec[count] = lastRow
 
-        if firstIteration == True:
-            print("Computed Value:")
-            for text in textContent:
-                ws1.append({lastColumn: float(text)})                
-                print(float(text))
-        else:
-            rowIndex = RowRec[count]
-            print("Computed Value:")
-            for text in textContent:
-                ws1.cell(row=rowIndex + 1, column = lastColumn, value = float(text))
-                rowIndex = rowIndex + 1                
-                print(float(text))
-        count = count + 1
-        print ("LastRow:")
-        print (lastRow)
+        #Record the number of channels
+        channels = len(textContent)
+        rowsReqForEachCompute = channels + 3
         
+        ws1.cell(row=rowToEnterData , column=lastColumn, value=edfFile)
+        rowToEnterData = rowToEnterData + 1
+        
+        for text in textContent:
+            
+            ws1.cell(row=rowToEnterData, column = lastColumn, value = float(text))
+            rowToEnterData = rowToEnterData + 1
+            print(float(text))
+        
+        rowToEnterData = rowToEnterData + 3
         wb.save(fileName)
+        
     lastColumn = lastColumn + 1
-    count = 0
-    firstIteration = False 
+    rowToEnterData = 1
+    
+    
 
 
 
